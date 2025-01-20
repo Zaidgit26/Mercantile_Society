@@ -3,8 +3,6 @@ import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
-import { useFormik } from 'formik';
-import * as Yup from 'yup';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
@@ -240,170 +238,30 @@ const SubmitButton = styled.button`
   }
 `;
 
-const ErrorText = styled.span`
-  color: #dc3545;
-  font-size: 0.8rem;
-  margin-top: 0.25rem;
-`;
-
-const PasswordStrengthIndicator = styled.div`
-  height: 4px;
-  background: ${props => {
-    if (props.strength === 'strong') return '#28a745';
-    if (props.strength === 'medium') return '#ffc107';
-    return '#dc3545';
-  }};
-  transition: all 0.3s ease;
-  margin-top: 0.5rem;
-`;
-
-// Add password strength checker
-const checkPasswordStrength = (password) => {
-  let score = 0;
-  if (password.length >= 8) score++;
-  if (/[A-Z]/.test(password)) score++;
-  if (/[a-z]/.test(password)) score++;
-  if (/[0-9]/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++;
-  
-  if (score >= 5) return 'strong';
-  if (score >= 3) return 'medium';
-  return 'weak';
-};
-
-// Add validation schema
-const validationSchema = Yup.object().shape({
-  name: Yup.string()
-    .required('Name is required')
-    .min(2, 'Name must be at least 2 characters')
-    .matches(/^[a-zA-Z\s]*$/, 'Name can only contain letters and spaces'),
-    
-  email: Yup.string()
-    .required('Email is required')
-    .email('Invalid email format')
-    .matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Invalid email format'),
-    
-  dateOfBirth: Yup.date()
-    .required('Date of birth is required')
-    .max(new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000), 'Must be at least 18 years old'),
-    
-  mobile: Yup.string()
-    .required('Mobile number is required')
-    .matches(/^[6-9]\d{9}$/, 'Invalid Indian mobile number'),
-    
-  aadharNumber: Yup.string()
-    .required('Aadhaar number is required')
-    .matches(/^\d{12}$/, 'Invalid Aadhaar number')
-    .test('valid-aadhar', 'Invalid Aadhaar number', (value) => {
-      if (!value) return false;
-      // Add Verhoeff algorithm check for Aadhaar
-      return true; // Implement actual validation
-    }),
-    
-  nomineeName: Yup.string()
-    .required('Nominee name is required')
-    .min(2, 'Name must be at least 2 characters')
-    .matches(/^[a-zA-Z\s]*$/, 'Name can only contain letters and spaces'),
-    
-  nomineeAadharNumber: Yup.string()
-    .required('Nominee Aadhaar number is required')
-    .matches(/^\d{12}$/, 'Invalid Aadhaar number'),
-    
-  pincode: Yup.string()
-    .required('Pincode is required')
-    .matches(/^[1-9][0-9]{5}$/, 'Invalid Indian pincode'),
-    
-  password: Yup.string()
-    .required('Password is required')
-    .min(8, 'Password must be at least 8 characters')
-    .matches(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .matches(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .matches(/[0-9]/, 'Password must contain at least one number')
-    .matches(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
-    
-  confirmPassword: Yup.string()
-    .required('Please confirm your password')
-    .oneOf([Yup.ref('password')], 'Passwords must match'),
-    
-  document: Yup.mixed()
-    .required('Document is required')
-    .test('fileSize', 'File size must be less than 3MB', (value) => {
-      if (!value) return true;
-      return value.size <= 3 * 1024 * 1024;
-    })
-    .test('fileType', 'Only PDF, JPG, JPEG, PNG files are allowed', (value) => {
-      if (!value) return true;
-      return ['application/pdf', 'image/jpeg', 'image/png'].includes(value.type);
-    })
-});
-
 const RegistrationForm = () => {
   const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    dateOfBirth: '',
+    stateOfResidence: '',
+    mobile: '',
+    otp: '',
+    nomineeName: '',
+    nomineeRelationship: '',
+    aadharNumber: '',
+    nomineeAadharNumber: '',
+    address: '',
+    city: '',
+    state: '',
+    pincode: '',
+    password: '',
+    confirmPassword: '',
+    document: null
+  });
+
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [countdown, setCountdown] = useState(0);
-
-  // Define handleSubmit before using it in Formik config
-  const handleSubmit = async (values) => {
-    try {
-      const formDataToSend = new FormData();
-      
-      // Append all form fields
-      Object.keys(values).forEach(key => {
-        if (key === 'document' && values[key]) {
-          formDataToSend.append('document', values[key]);
-          console.log('Appending document:', values[key].name);
-        } else {
-          formDataToSend.append(key, values[key]);
-        }
-      });
-
-      console.log('Sending registration data...');
-      console.log('Form values:', {
-        ...values,
-        document: values.document ? values.document.name : null
-      });
-
-      const response = await axios.post(`${API_BASE_URL}/register`, formDataToSend, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-
-      if (response.data.success) {
-        console.log('Registration successful:', response.data);
-        toast.success('Registration successful!');
-        navigate('/');
-      }
-    } catch (err) {
-      console.error('Registration error:', err.response?.data || err.message);
-      toast.error(err.response?.data?.message || 'Registration failed');
-    }
-  };
-
-  // Now initialize Formik after handleSubmit is defined
-  const formik = useFormik({
-    initialValues: {
-      name: '',
-      email: '',
-      dateOfBirth: '',
-      stateOfResidence: '',
-      mobile: '',
-      otp: '',
-      nomineeName: '',
-      nomineeRelationship: '',
-      aadharNumber: '',
-      nomineeAadharNumber: '',
-      address: '',
-      city: '',
-      state: '',
-      pincode: '',
-      password: '',
-      confirmPassword: '',
-      document: null
-    },
-    validationSchema,
-    onSubmit: handleSubmit
-  });
 
   const startCountdown = () => {
     setCountdown(30);
@@ -422,7 +280,7 @@ const RegistrationForm = () => {
     e.preventDefault();
     try {
       const response = await axios.post(`${API_BASE_URL}/send-otp`, {
-        mobile: formik.values.mobile
+        mobile: formData.mobile
       });
       if (response.data.success) {
         setIsOtpSent(true);
@@ -434,6 +292,14 @@ const RegistrationForm = () => {
     }
   };
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (file && file.size > 3 * 1024 * 1024) {
@@ -441,30 +307,66 @@ const RegistrationForm = () => {
       e.target.value = '';
       return;
     }
-    formik.setFieldValue('document', file);
+    setFormData(prev => ({
+      ...prev,
+      document: file
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+        const formDataToSend = new FormData();
+        
+        // Append all form fields
+        Object.keys(formData).forEach(key => {
+            if (key === 'document' && formData[key]) {
+                formDataToSend.append('document', formData[key]);
+                console.log('Appending document:', formData[key].name);
+            } else {
+                formDataToSend.append(key, formData[key]);
+            }
+        });
+
+        console.log('Sending registration data...');
+        console.log('Form values:', {
+            ...formData,
+            document: formData.document ? formData.document.name : null
+        });
+
+        const response = await axios.post(`${API_BASE_URL}/register`, formDataToSend, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+
+        if (response.data.success) {
+            console.log('Registration successful:', response.data);
+            toast.success('Registration successful!');
+            navigate('/');
+        }
+    } catch (err) {
+        console.error('Registration error:', err.response?.data || err.message);
+        toast.error(err.response?.data?.message || 'Registration failed');
+    }
   };
 
   return (
     <FormWrapper>
       <FormTitle>Registration</FormTitle>
-      <FormGrid onSubmit={formik.handleSubmit}>
+      <FormGrid onSubmit={handleSubmit}>
         <InputGroup>
           <Input
             type="text"
             name="name"
             id="name"
-            value={formik.values.name}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
+            value={formData.name}
+            onChange={handleChange}
             placeholder="Enter your name"
-            isError={formik.touched.name && formik.errors.name}
           />
-          <Label htmlFor="name" $hasValue={formik.values.name.length > 0}>
+          <Label htmlFor="name" $hasValue={formData.name.length > 0}>
             Name*
           </Label>
-          {formik.touched.name && formik.errors.name && (
-            <ErrorText>{formik.errors.name}</ErrorText>
-          )}
         </InputGroup>
 
         <InputGroup>
@@ -472,18 +374,13 @@ const RegistrationForm = () => {
             type="email"
             name="email"
             id="email"
-            value={formik.values.email}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
+            value={formData.email}
+            onChange={handleChange}
             placeholder="Enter your email"
-            isError={formik.touched.email && formik.errors.email}
           />
-          <Label htmlFor="email" $hasValue={formik.values.email.length > 0}>
+          <Label htmlFor="email" $hasValue={formData.email.length > 0}>
             Email Address*
           </Label>
-          {formik.touched.email && formik.errors.email && (
-            <ErrorText>{formik.errors.email}</ErrorText>
-          )}
         </InputGroup>
 
         <InputGroup>
@@ -491,38 +388,29 @@ const RegistrationForm = () => {
             type="date"
             name="dateOfBirth"
             id="dateOfBirth"
-            value={formik.values.dateOfBirth}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
+            value={formData.dateOfBirth}
+            onChange={handleChange}
             onFocus={(e) => e.target.showPicker()}
-            isError={formik.touched.dateOfBirth && formik.errors.dateOfBirth}
           />
-          <Label htmlFor="dateOfBirth" $hasValue={formik.values.dateOfBirth.length > 0}>
+          <Label htmlFor="dateOfBirth" $hasValue={formData.dateOfBirth.length > 0}>
             Date of Birth*
           </Label>
-          {formik.touched.dateOfBirth && formik.errors.dateOfBirth && (
-            <ErrorText>{formik.errors.dateOfBirth}</ErrorText>
-          )}
         </InputGroup>
 
         <InputGroup>
           <Select
             name="stateOfResidence"
             id="stateOfResidence"
-            value={formik.values.stateOfResidence}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
+            value={formData.stateOfResidence}
+            onChange={handleChange}
           >
             <option value="">Select State</option>
             <option value="Tamil Nadu">Tamil Nadu</option>
             <option value="Puducherry">Puducherry</option>
           </Select>
-          <Label htmlFor="stateOfResidence" $hasValue={formik.values.stateOfResidence.length > 0}>
+          <Label htmlFor="stateOfResidence" $hasValue={formData.stateOfResidence.length > 0}>
             State of Residence*
           </Label>
-          {formik.touched.stateOfResidence && formik.errors.stateOfResidence && (
-            <ErrorText>{formik.errors.stateOfResidence}</ErrorText>
-          )}
         </InputGroup>
 
         <div style={{ 
@@ -536,23 +424,18 @@ const RegistrationForm = () => {
               type="tel"
               name="mobile"
               id="mobile"
-              value={formik.values.mobile}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
+              value={formData.mobile}
+              onChange={handleChange}
               placeholder="Enter mobile number"
               maxLength="10"
-              isError={formik.touched.mobile && formik.errors.mobile}
             />
-            <Label htmlFor="mobile" $hasValue={formik.values.mobile.length > 0}>
+            <Label htmlFor="mobile" $hasValue={formData.mobile.length > 0}>
               Mobile Number*
             </Label>
-            {formik.touched.mobile && formik.errors.mobile && (
-              <ErrorText>{formik.errors.mobile}</ErrorText>
-            )}
           </InputGroup>
           <OTPButton 
             onClick={handleSendOTP}
-            disabled={formik.values.mobile.length !== 10 || countdown > 0}
+            disabled={formData.mobile.length !== 10 || countdown > 0}
           >
             {countdown > 0 ? `${countdown}s` : (isOtpSent ? 'Resend' : 'Send OTP')}
           </OTPButton>
@@ -563,18 +446,14 @@ const RegistrationForm = () => {
             type="text"
             name="otp"
             id="otp"
-            value={formik.values.otp}
-            onChange={formik.handleChange}
+            value={formData.otp}
+            onChange={handleChange}
             placeholder="Enter OTP"
             disabled={!isOtpSent}
-            isError={formik.touched.otp && formik.errors.otp}
           />
-          <Label htmlFor="otp" $hasValue={formik.values.otp.length > 0}>
+          <Label htmlFor="otp" $hasValue={formData.otp.length > 0}>
             OTP*
           </Label>
-          {formik.touched.otp && formik.errors.otp && (
-            <ErrorText>{formik.errors.otp}</ErrorText>
-          )}
         </InputGroup>
 
         <InputGroup>
@@ -582,27 +461,21 @@ const RegistrationForm = () => {
             type="text"
             name="nomineeName"
             id="nomineeName"
-            value={formik.values.nomineeName}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
+            value={formData.nomineeName}
+            onChange={handleChange}
             placeholder="Enter nominee name"
-            isError={formik.touched.nomineeName && formik.errors.nomineeName}
           />
-          <Label htmlFor="nomineeName" $hasValue={formik.values.nomineeName.length > 0}>
+          <Label htmlFor="nomineeName" $hasValue={formData.nomineeName.length > 0}>
             Nominee Name*
           </Label>
-          {formik.touched.nomineeName && formik.errors.nomineeName && (
-            <ErrorText>{formik.errors.nomineeName}</ErrorText>
-          )}
         </InputGroup>
 
         <InputGroup>
           <Select
             name="nomineeRelationship"
             id="nomineeRelationship"
-            value={formik.values.nomineeRelationship}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
+            value={formData.nomineeRelationship}
+            onChange={handleChange}
           >
             <option value="">Select Relationship</option>
             <option value="Father">Father</option>
@@ -610,12 +483,9 @@ const RegistrationForm = () => {
             <option value="Spouse">Spouse</option>
             <option value="Child">Child</option>
           </Select>
-          <Label htmlFor="nomineeRelationship" $hasValue={formik.values.nomineeRelationship.length > 0}>
+          <Label htmlFor="nomineeRelationship" $hasValue={formData.nomineeRelationship.length > 0}>
             Nominee Relationship*
           </Label>
-          {formik.touched.nomineeRelationship && formik.errors.nomineeRelationship && (
-            <ErrorText>{formik.errors.nomineeRelationship}</ErrorText>
-          )}
         </InputGroup>
 
         <InputGroup>
@@ -623,19 +493,14 @@ const RegistrationForm = () => {
             type="text"
             name="aadharNumber"
             id="aadharNumber"
-            value={formik.values.aadharNumber}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
+            value={formData.aadharNumber}
+            onChange={handleChange}
             placeholder="Enter your Aadhaar number"
             maxLength="12"
-            isError={formik.touched.aadharNumber && formik.errors.aadharNumber}
           />
-          <Label htmlFor="aadharNumber" $hasValue={formik.values.aadharNumber.length > 0}>
+          <Label htmlFor="aadharNumber" $hasValue={formData.aadharNumber.length > 0}>
             Aadhaar Number*
           </Label>
-          {formik.touched.aadharNumber && formik.errors.aadharNumber && (
-            <ErrorText>{formik.errors.aadharNumber}</ErrorText>
-          )}
         </InputGroup>
 
         <InputGroup>
@@ -643,19 +508,14 @@ const RegistrationForm = () => {
             type="text"
             name="nomineeAadharNumber"
             id="nomineeAadharNumber"
-            value={formik.values.nomineeAadharNumber}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
+            value={formData.nomineeAadharNumber}
+            onChange={handleChange}
             placeholder="Enter nominee Aadhaar number"
             maxLength="12"
-            isError={formik.touched.nomineeAadharNumber && formik.errors.nomineeAadharNumber}
           />
-          <Label htmlFor="nomineeAadharNumber" $hasValue={formik.values.nomineeAadharNumber.length > 0}>
+          <Label htmlFor="nomineeAadharNumber" $hasValue={formData.nomineeAadharNumber.length > 0}>
             Nominee Aadhaar Number*
           </Label>
-          {formik.touched.nomineeAadharNumber && formik.errors.nomineeAadharNumber && (
-            <ErrorText>{formik.errors.nomineeAadharNumber}</ErrorText>
-          )}
         </InputGroup>
 
         <InputGroup>
@@ -663,19 +523,14 @@ const RegistrationForm = () => {
             as="textarea"
             name="address"
             id="address"
-            value={formik.values.address}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
+            value={formData.address}
+            onChange={handleChange}
             placeholder="Enter your address"
             style={{ minHeight: '100px', resize: 'none' }}
-            isError={formik.touched.address && formik.errors.address}
           />
-          <Label htmlFor="address" $hasValue={formik.values.address.length > 0}>
+          <Label htmlFor="address" $hasValue={formData.address.length > 0}>
             Address*
           </Label>
-          {formik.touched.address && formik.errors.address && (
-            <ErrorText>{formik.errors.address}</ErrorText>
-          )}
         </InputGroup>
 
         <InputGroup>
@@ -683,38 +538,29 @@ const RegistrationForm = () => {
             type="text"
             name="city"
             id="city"
-            value={formik.values.city}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
+            value={formData.city}
+            onChange={handleChange}
             placeholder="Enter city"
-            isError={formik.touched.city && formik.errors.city}
           />
-          <Label htmlFor="city" $hasValue={formik.values.city.length > 0}>
+          <Label htmlFor="city" $hasValue={formData.city.length > 0}>
             City*
           </Label>
-          {formik.touched.city && formik.errors.city && (
-            <ErrorText>{formik.errors.city}</ErrorText>
-          )}
         </InputGroup>
 
         <InputGroup>
           <Select
             name="state"
             id="state"
-            value={formik.values.state}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
+            value={formData.state}
+            onChange={handleChange}
           >
             <option value="">Select State</option>
             <option value="Tamil Nadu">Tamil Nadu</option>
             <option value="Puducherry">Puducherry</option>
           </Select>
-          <Label htmlFor="state" $hasValue={formik.values.state.length > 0}>
+          <Label htmlFor="state" $hasValue={formData.state.length > 0}>
             State*
           </Label>
-          {formik.touched.state && formik.errors.state && (
-            <ErrorText>{formik.errors.state}</ErrorText>
-          )}
         </InputGroup>
 
         <InputGroup>
@@ -722,19 +568,14 @@ const RegistrationForm = () => {
             type="text"
             name="pincode"
             id="pincode"
-            value={formik.values.pincode}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
+            value={formData.pincode}
+            onChange={handleChange}
             placeholder="Enter pincode"
             maxLength="6"
-            isError={formik.touched.pincode && formik.errors.pincode}
           />
-          <Label htmlFor="pincode" $hasValue={formik.values.pincode.length > 0}>
+          <Label htmlFor="pincode" $hasValue={formData.pincode.length > 0}>
             Pincode*
           </Label>
-          {formik.touched.pincode && formik.errors.pincode && (
-            <ErrorText>{formik.errors.pincode}</ErrorText>
-          )}
         </InputGroup>
 
         <InputGroup>
@@ -742,21 +583,13 @@ const RegistrationForm = () => {
             type="password"
             name="password"
             id="password"
-            value={formik.values.password}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
+            value={formData.password}
+            onChange={handleChange}
             placeholder="Enter password"
-            isError={formik.touched.password && formik.errors.password}
           />
-          <Label htmlFor="password" $hasValue={formik.values.password.length > 0}>
+          <Label htmlFor="password" $hasValue={formData.password.length > 0}>
             Password*
           </Label>
-          <PasswordStrengthIndicator 
-            strength={checkPasswordStrength(formik.values.password)} 
-          />
-          {formik.touched.password && formik.errors.password && (
-            <ErrorText>{formik.errors.password}</ErrorText>
-          )}
         </InputGroup>
 
         <InputGroup>
@@ -764,18 +597,13 @@ const RegistrationForm = () => {
             type="password"
             name="confirmPassword"
             id="confirmPassword"
-            value={formik.values.confirmPassword}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
+            value={formData.confirmPassword}
+            onChange={handleChange}
             placeholder="Confirm password"
-            isError={formik.touched.confirmPassword && formik.errors.confirmPassword}
           />
-          <Label htmlFor="confirmPassword" $hasValue={formik.values.confirmPassword.length > 0}>
+          <Label htmlFor="confirmPassword" $hasValue={formData.confirmPassword.length > 0}>
             Confirm Password*
           </Label>
-          {formik.touched.confirmPassword && formik.errors.confirmPassword && (
-            <ErrorText>{formik.errors.confirmPassword}</ErrorText>
-          )}
         </InputGroup>
 
         <div style={{ 

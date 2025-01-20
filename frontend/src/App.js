@@ -1,16 +1,12 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import styled from 'styled-components';
 import { Toaster } from 'react-hot-toast';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider, useAuth } from './context/AuthContext';
 import LeftPanel from './components/LeftPanel';
 import RegistrationForm from './components/forms/RegistrationForm';
 import LoginForm from './components/forms/LoginForm';
 import { GlobalStyle } from './styles/GlobalStyles';
 import { RegistrationProvider } from './context/RegistrationContext';
-import Home from './components/Home';
-import Profile from './components/Profile';
 
 const Container = styled.div`
   display: flex;
@@ -42,64 +38,23 @@ const MainContent = styled.div`
   }
 `;
 
-const queryClient = new QueryClient();
-
-// Protected Route component
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
-  }
-  
-  return children;
-};
-
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router>
-          <GlobalStyle />
-          <Container>
-            <LeftPanel />
-            <MainContent>
-              <Routes>
-                <Route path="/" element={<LoginForm />} />
-                <Route path="/registration" element={<RegistrationForm />} />
-                <Route 
-                  path="/home" 
-                  element={
-                    <ProtectedRoute>
-                      <Home />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/profile" 
-                  element={
-                    <ProtectedRoute>
-                      <Profile />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </MainContent>
-          </Container>
-          <Toaster 
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: '#363636',
-                color: '#fff',
-              },
-            }}
-          />
-        </Router>
-      </AuthProvider>
-    </QueryClientProvider>
+    <Router>
+      <RegistrationProvider>
+        <GlobalStyle />
+        <Container>
+          <LeftPanel />
+          <MainContent>
+            <Routes>
+              <Route path="/" element={<LoginForm />} />
+              <Route path="/registration" element={<RegistrationForm />} />
+            </Routes>
+          </MainContent>
+        </Container>
+        <Toaster position="top-right" />
+      </RegistrationProvider>
+    </Router>
   );
 }
 
