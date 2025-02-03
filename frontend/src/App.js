@@ -7,6 +7,7 @@ import RegistrationForm from './components/forms/RegistrationForm';
 import LoginForm from './components/forms/LoginForm';
 import { GlobalStyle } from './styles/GlobalStyles';
 import { RegistrationProvider } from './context/RegistrationContext';
+import Home from './components/Home';
 
 const Container = styled.div`
   display: flex;
