@@ -1,7 +1,0 @@
-fastapi
-uvicorn
-PyPDF2
-pdf2image
-pytesseract
-opencv-python
-Pillow
